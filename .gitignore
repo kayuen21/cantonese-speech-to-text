@@ -1,0 +1,36 @@
+# ==========================================================================
+#  Credentials — NEVER commit. config.json holds your HuggingFace token.
+#  Copy config.example.json -> config.json and paste your own token.
+# ==========================================================================
+config.json
+
+# ---- Python --------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# ---- Runtime data (created by the app) -----------------------------------
+uploads/
+results/
+
+# ---- Large local binaries — see README ("FFmpeg shared build") -----------
+ffmpeg-shared/
+
+# ---- Test audio — record your own, see README ----------------------------
+test_*.wav
+*.wav
+
+# ---- Editors / OS --------------------------------------------------------
+.vscode/
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- Scratch -------------------------------------------------------------
+*.log
+tmp/

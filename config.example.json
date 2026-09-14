@@ -1,0 +1,8 @@
+{
+  "hf_token": "hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "ollama_url": "http://127.0.0.1:11434",
+  "proofread_model": "qwen3:8b",
+  "chat_model": "qwen3:8b",
+  "chat_num_ctx": 16384,
+  "chat_num_predict": 2048
+}
