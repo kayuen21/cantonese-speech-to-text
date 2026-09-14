@@ -170,7 +170,3 @@ node e2e_chat.mjs
 - The meeting-notes assistant calls `unload()` to free Whisper's VRAM before
   answering; the next transcription reloads the model.
 - No `.wav` file is ever committed.
-
-## License
-
-Not specified (`No license`) — add a `LICENSE` file if you want to open-source it.
