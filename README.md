@@ -1,80 +1,93 @@
-# 粵語語音轉文字（Cantonese Speech-to-Text）
+# Cantonese Speech-to-Text
 
-本機運行嘅粵語轉寫系統：**faster-whisper (GPU)** ＋ **說話人分離 (pyannote)** ＋
-**本地 LLM 校對／會議記錄助手 (Ollama)**，配一個 Apple 風格嘅繁體中文網頁。
+Local Cantonese transcription pipeline: **faster-whisper (GPU)** + **speaker
+diarization (pyannote)** + **local LLM proofreading / meeting-notes assistant
+(Ollama)**, wrapped in an Apple-style Traditional Chinese web UI.
 
-> 全部運算都喺你部機進行，音檔唔會上傳去任何雲端服務。
+> Everything runs on your own machine — audio is never sent to any cloud service.
 
 ---
 
-## 功能
+## Features
 
-- **上傳 → 按「開始轉寫」先開始**：唔會一上傳就跑，隨時可以**中止**，已完成嘅部分會保留
-- 逐段即時顯示、進度、預估剩餘時間；可下載 **TXT / SRT / VTT**（`medium` 或 `large-v3`）
-- **Qwen3 校對**（可關）：只校正、不摘要；保留粵語口語、英文借詞、全形標點
-- **說話人分離**（可關，需 HuggingFace token）：原文／校對版並排，字幕帶「說話人N：」標籤
-- **會議記錄助手**（chatbox）：就住你目前檢視嗰份逐字稿問答、生成會議記錄（SSE 串流）
-- 網頁可選語言（自動／粵語／中文／英文）
+- **Upload, then press 「開始轉寫」 (Start)** — nothing runs until you confirm it,
+  and you can **abort** at any time; work already completed is kept
+- Live per-segment output with progress and ETA; download **TXT / SRT / VTT**
+  (`medium` or `large-v3`)
+- **Qwen3 proofreading** (optional): corrects only, never summarizes; preserves
+  Cantonese colloquialisms, English loanwords and full-width punctuation
+- **Speaker diarization** (optional, needs a HuggingFace token): original and
+  proofread text side by side, subtitles labelled `說話人N：`
+- **Meeting-notes assistant** (chatbox): ask questions about the transcript you
+  are viewing, or generate meeting minutes (SSE streaming)
+- UI language selector (auto / Cantonese / Chinese / English)
 
-## 環境需求
+## Requirements
 
-| 項目 | 備註 |
+| Item | Notes |
 | --- | --- |
-| Windows 11 | 已測試（Linux/macOS 理論可行，但 FFmpeg／DLL 部分係 Windows 專用） |
-| Python 3.14 | 本專案用 `.venv`（**必須**，見下面「注意事項」） |
-| NVIDIA GPU | 已測試 RTX 4060 Laptop 8GB ＋ CUDA 12.8 |
-| FFmpeg | **shared** build（見步驟 4）＋ `ffmpeg` 指令要在 PATH |
-| Ollama | 0.33+，並 `ollama pull qwen3:8b` |
-| HuggingFace | 帳號 + read token（說話人分離用） |
+| Windows 11 | Tested (Linux/macOS should work in principle, but the FFmpeg/DLL handling is Windows-specific) |
+| Python 3.14 | This project uses `.venv` (**mandatory** — see “Gotchas”) |
+| NVIDIA GPU | Tested on RTX 4060 Laptop 8 GB + CUDA 12.8 |
+| FFmpeg | **shared** build (step 4) **and** the `ffmpeg` command on PATH |
+| Ollama | 0.33+, with `ollama pull qwen3:8b` |
+| HuggingFace | account + read token (for diarization) |
 
-## 安裝
+## Installation
 
-**1. 建立虛擬環境**
+**1. Create the virtual environment**
 
 ```bash
 python -m venv .venv
 .venv/Scripts/python.exe -m pip install -U pip
 ```
 
-**2. 先裝 PyTorch CUDA 版**（唔可以靠 `requirements.txt`，否則會裝到 CPU 版）
+**2. Install the CUDA build of PyTorch first** (don't rely on `requirements.txt`,
+or you will get the CPU build)
 
 ```bash
 .venv/Scripts/pip.exe install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
 ```
 
-**3. 裝其餘套件**
+**3. Install the remaining packages**
 
 ```bash
 .venv/Scripts/pip.exe install -r requirements.txt
 ```
 
-**4. FFmpeg shared build**（pyannote 4.x 用 torchcodec 解碼音訊，需要 DLL）
+**4. FFmpeg shared build** (pyannote 4.x decodes audio through torchcodec, which
+needs the DLLs)
 
-1. 去 <https://github.com/BtbN/FFmpeg-Builds/releases> 下載 `ffmpeg-master-latest-win64-gpl-shared.zip`
-2. 解壓，將整個 `ffmpeg-master-latest-win64-gpl-shared` 資料夾放入專案根目錄嘅 `ffmpeg-shared/`
-   （即 `ffmpeg-shared/ffmpeg-master-latest-win64-gpl-shared/bin/*.dll`）
-3. 將同一個 `bin` 加入系統 PATH，等 `_to_wav16k()` 叫得到 `ffmpeg` 指令
+1. Download `ffmpeg-master-latest-win64-gpl-shared.zip` from
+   <https://github.com/BtbN/FFmpeg-Builds/releases>
+2. Extract it and put the whole `ffmpeg-master-latest-win64-gpl-shared` folder
+   into `ffmpeg-shared/` in the project root
+   (i.e. `ffmpeg-shared/ffmpeg-master-latest-win64-gpl-shared/bin/*.dll`)
+3. Add that same `bin` folder to your system PATH so `_to_wav16k()` can call the
+   `ffmpeg` command
 
-> `ffmpeg-shared/` 有 179 MB，已列入 `.gitignore`，唔會入 repo。
+> `ffmpeg-shared/` is 179 MB and is listed in `.gitignore` — it is not part of
+> the repo.
 
-**5. 建立 `config.json`**
+**5. Create `config.json`**
 
 ```bash
 cp config.example.json config.json
 ```
 
-打開 `config.json` 填入自己嘅 HuggingFace token：
+Open `config.json` and fill in your HuggingFace token:
 
-| 欄位 | 說明 |
+| Field | Description |
 | --- | --- |
-| `hf_token` | 必填（說話人分離用）。亦可用環境變數 `HF_TOKEN` |
-| `ollama_url` | 預設 `http://127.0.0.1:11434` |
-| `proofread_model` / `chat_model` | 預設 `qwen3:8b` |
-| `chat_num_ctx` / `chat_num_predict` | 預設 `16384` / `2048` |
+| `hf_token` | Required (for diarization). The `HF_TOKEN` environment variable also works |
+| `ollama_url` | Defaults to `http://127.0.0.1:11434` |
+| `proofread_model` / `chat_model` | Default `qwen3:8b` |
+| `chat_num_ctx` / `chat_num_predict` | Default `16384` / `2048` |
 
-> ⚠️ `config.json` 已列入 `.gitignore` —— **唔好** commit 呢個檔。
+> ⚠️ `config.json` is in `.gitignore` — do **not** commit this file.
 
-**6. 接受 HuggingFace 模型授權**（用同一個帳號撳「Agree」）
+**6. Accept the HuggingFace model licences** (click “Agree” while signed in to
+the same account)
 
 - `pyannote/speaker-diarization-3.1`
 - `pyannote/segmentation-3.0`
@@ -87,71 +100,77 @@ cp config.example.json config.json
 ollama pull qwen3:8b
 ```
 
-## 啟動
+## Running
 
 ```bash
-start_server.bat        # Windows：先清走佔用 5000 埠嘅舊進程，再開瀏覽器
-# 或者
+start_server.bat        # Windows: clears any stale process on port 5000, then opens the browser
+# or
 .venv/Scripts/python.exe app.py
 ```
 
-開啟 <http://127.0.0.1:5000>。
+Open <http://127.0.0.1:5000>.
 
 ## HTTP API
 
-| 方法 | 路徑 | 用途 |
+| Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/` | 網頁介面 |
-| GET | `/api/health` | 健康檢查 |
-| POST | `/api/transcribe` | 上傳並開始轉寫（multipart，欄位 `audio`；`model`=`medium`\|`large-v3`、`language`、`proofread`=`1/0`、`diarize`=`1/0`） |
-| GET | `/api/status/<job_id>` | 進度／分段結果（前端輪詢） |
-| POST | `/api/cancel/<job_id>` | 中止（協作式取消，保留已完成部分） |
-| GET | `/api/download/<job_id>/<fmt>` | 下載 `txt` / `srt` / `vtt` |
-| GET | `/api/jobs` | 列出任務 |
-| POST | `/api/chat` | 會議記錄助手（SSE 串流；body: `{messages, text}`） |
+| GET | `/` | Web UI |
+| GET | `/api/health` | Health check |
+| POST | `/api/transcribe` | Upload and start transcription (multipart, field `audio`; `model`=`medium`\|`large-v3`, `language`, `proofread`=`1/0`, `diarize`=`1/0`) |
+| GET | `/api/status/<job_id>` | Progress / segment results (polled by the frontend) |
+| POST | `/api/cancel/<job_id>` | Abort (cooperative cancellation; completed work is kept) |
+| GET | `/api/download/<job_id>/<fmt>` | Download `txt` / `srt` / `vtt` |
+| GET | `/api/jobs` | List jobs |
+| POST | `/api/chat` | Meeting-notes assistant (SSE stream; body: `{messages, text}`) |
 
-## 專案結構
+## Project layout
 
 ```
-app.py                     Flask 伺服器、任務管理、API
-engine.py                  WhisperEngine（轉寫／校對／分離／chat_stream）
-templates/index.html       單頁介面
-static/app.js              前端邏輯（輪詢、SSE、下載）
-static/style.css           Apple 風格樣式
-config.example.json        設定範本（複製成 config.json）
-start_server.bat           Windows 啟動腳本
-e2e_chat.mjs               Headless Chrome (CDP) 端到端測試
-test_chatformat.mjs        前端格式化單元測試
+app.py                     Flask server, job management, API
+engine.py                  WhisperEngine (transcribe / proofread / diarize / chat_stream)
+templates/index.html       single-page UI
+static/app.js              frontend logic (polling, SSE, downloads)
+static/style.css           Apple-style stylesheet
+config.example.json        config template (copy to config.json)
+start_server.bat           Windows launch script
+e2e_chat.mjs               end-to-end test via headless Chrome (CDP)
+test_chatformat.mjs        frontend formatting unit test
 ```
 
-## 測試
+## Testing
 
 ```bash
-node test_chatformat.mjs        # 純函式測試，唔需要伺服器
+node test_chatformat.mjs        # pure function test, no server needed
 
-# 端到端（需要：伺服器已啟動、自己有 test_2speaker.wav、headless Chrome）
+# End-to-end (needs: the server running, your own test_2speaker.wav, headless Chrome)
 "/c/Program Files/Google/Chrome/Application/chrome.exe" --headless=new \
   --remote-debugging-port=9333 --user-data-dir="$LOCALAPPDATA/Temp/chrome-cdp-test" \
   "http://127.0.0.1:5000/" &
 node e2e_chat.mjs
 ```
 
-> `e2e_chat.mjs` 會上傳 `test_2speaker.wav`（2 人粵語對話，自己錄一段即可）。
-> 測試音檔已列入 `.gitignore`，避免私人錄音入 repo。
+> `e2e_chat.mjs` uploads `test_2speaker.wav` (a two-speaker Cantonese
+> conversation — just record your own). Test audio is in `.gitignore` so private
+> recordings never end up in the repo.
 
-## 注意事項（實測踩過嘅坑）
+## Gotchas (things that actually bit us)
 
-- **一定要用專案 `.venv`**：用其他 Python（例如 uv 嘅 3.11）會載入 CPU 版 torch，
-  一分離說話人就 `AssertionError: Torch not compiled with CUDA enabled`。
-  `app.py` 有自我修復（`os.execv` 重啟入 `.venv`），但自己跑 script 時要留意。
-- **改完前端要 bump cache-bust 再重啟**：`templates/index.html` 內嘅 `app.js?v=` / `style.css?v=`，
-  再加 Flask 會 cache 模板，唔重啟唔會生效。
-- **VRAM 好緊**：8GB 卡同時跑 Whisper + pyannote + Qwen3 會接近上限；
-  校對係分塊進行（`chunk_chars=1200`，`keep_alive="5m"`），長稿（~19.5k 字）約需 11 分鐘。
-- **Qwen3 校對只做一次**，唔會重試，亦唔會變成摘要（有 marker guard）。
-- 會議記錄助手回答前會 `unload()` Whisper 釋放 VRAM，下次轉寫會重新載入模型。
-- 所有 `.wav` 都唔會入 repo。
+- **Always use the project's `.venv`**: any other Python (e.g. uv's 3.11) loads
+  the CPU build of torch and diarization dies with
+  `AssertionError: Torch not compiled with CUDA enabled`. `app.py` self-heals
+  (re-execs into `.venv` via `os.execv`), but standalone scripts need care.
+- **After touching the frontend, bump the cache-bust query and restart**:
+  `app.js?v=` / `style.css?v=` in `templates/index.html`; Flask also caches
+  templates, so changes do not take effect without a restart.
+- **VRAM is tight**: running Whisper + pyannote + Qwen3 at once on an 8 GB card
+  is close to the limit. Proofreading is chunked (`chunk_chars=1200`,
+  `keep_alive="5m"`); a long transcript (~19.5k characters) takes about 11 minutes.
+- **Qwen3 proofreading runs once** — no retries, and it cannot degrade into a
+  summary (marker guard).
+- The meeting-notes assistant calls `unload()` to free Whisper's VRAM before
+  answering; the next transcription reloads the model.
+- No `.wav` file is ever committed.
 
-## 授權
+## License
 
-未指定（`No license`）—— 如需開源請補上 LICENSE。
+Not specified (`No license`) — add a `LICENSE` file if you want to open-source it.
