@@ -24,7 +24,7 @@ diarization (pyannote)** + **local LLM proofreading / meeting-notes assistant
   are viewing, or generate meeting minutes (SSE streaming)
 ## 2. Project pipeline
 
-**End-to-end path.** Input: a recorded Cantonese meeting containing one or more speakers. Processing: the upload is staged until the user presses 「開始轉寫」, then audio is normalised to 16 kHz mono WAV; faster-whisper transcribes it on the local GPU; pyannote optionally labels who spoke when; Qwen3 optionally corrects the text without summarising it. Output: a timestamped transcript with speaker-prefixed lines, downloadable as TXT, SRT or VTT, plus a chatbox that answers questions about it. The team builds one offline, single-machine web app for that path — not real-time captioning, translation, or a cloud service.
+**End-to-end path.** Input: a recorded Cantonese meeting containing one or more speakers. Processing: the upload is staged until the user presses 「開始轉寫」, then audio is normalised to 16 kHz mono WAV; faster-whisper transcribes it on the local GPU; pyannote optionally labels who spoke when; Qwen3 optionally corrects the text without summarising it (chunked, so long transcripts cannot collapse into a summary). Output: a timestamped transcript with speaker-prefixed lines, downloadable as TXT, SRT or VTT, plus a chatbox that answers questions about it. The team builds one offline, single-machine web app for that path — not real-time captioning, translation, or a cloud service.
 
 ```mermaid
 flowchart LR
