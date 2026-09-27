@@ -22,6 +22,34 @@ diarization (pyannote)** + **local LLM proofreading / meeting-notes assistant
   proofread text side by side, subtitles labelled `說話人N：`
 - **Meeting-notes assistant** (chatbox): ask questions about the transcript you
   are viewing, or generate meeting minutes (SSE streaming)
+## 2. Project pipeline
+
+**End-to-end path.** Input: a recorded Cantonese meeting containing one or more speakers. Processing: the upload is staged until the user presses 「開始轉寫」, then audio is normalised to 16 kHz mono WAV; faster-whisper transcribes it on the local GPU; pyannote optionally labels who spoke when; Qwen3 optionally corrects the text without summarising it. Output: a timestamped transcript with speaker-prefixed lines, downloadable as TXT, SRT or VTT, plus a chatbox that answers questions about it. The team builds one offline, single-machine web app for that path — not real-time captioning, translation, or a cloud service.
+
+```mermaid
+flowchart LR
+    A["Input<br/>Cantonese meeting recording<br/>wav / mp3 / m4a / opus"] --> B["Upload + confirm<br/>user presses 開始轉寫"]
+    B --> C["Normalise<br/>ffmpeg to 16 kHz mono WAV"]
+    C --> D["Transcribe<br/>faster-whisper on GPU (yue)"]
+    D --> E["Diarise (optional)<br/>pyannote to 說話人N："]
+    E --> F["Proofread (optional)<br/>Qwen3 via Ollama, chunked"]
+    F --> G["Result<br/>TXT / SRT / VTT<br/>original + corrected"]
+    G --> H["Meeting-notes assistant<br/>Q&A / minutes (SSE)"]
+```
+
+### request → method → result
+
+| Request | Method | Result |
+| --- | --- | --- |
+| press 「開始轉寫」 after upload | `POST /api/transcribe` — nothing runs before confirmation | job id + progress |
+| audio in any container | ffmpeg → 16 kHz mono WAV | audio pyannote can read |
+| normalised audio | faster-whisper on the local GPU (`medium` / `large-v3`) | timestamped Cantonese segments |
+| segments + audio *(optional)* | pyannote speaker diarization | `說話人N：` prefixes |
+| transcript *(optional)* | Qwen3 via Ollama, chunked | corrected text — never a summary |
+| finished job | `GET /api/download/<job_id>/<fmt>` | TXT / SRT / VTT |
+| question about the transcript *(optional)* | Ollama, SSE stream | answer or meeting minutes |
+
+**What the team will actually build:** one small offline web app that turns a single Cantonese meeting recording into a speaker-labelled, downloadable transcript on one machine. Not real-time captioning, not translation, not a cloud service.
 
 ## Requirements
 
@@ -142,6 +170,34 @@ test_chatformat.mjs        frontend formatting unit test
 - **Qwen3 校對（可關閉）**：僅進行校正，不進行摘要；保留粵語口語、英文借詞與全形標點
 - **說話人分離（可關閉，需 HuggingFace token）**：原文與校對版並排顯示，字幕標註為 `說話人N：`
 - **會議記錄助手**（對話框）：可針對目前檢視的逐字稿提問，或產生會議記錄（SSE 串流）
+## 2. 專案流程
+
+**端到端流程。** 輸入：一段包含一位或多位講者的粵語會議錄音。處理：上傳後先暫存，待使用者按下「開始轉寫」才開始；音訊先正規化為 16 kHz 單聲道 WAV，再由 faster-whisper 於本機 GPU 轉錄；pyannote 可選地標註發言者；Qwen3 可選地校正文字，但不進行摘要。輸出：行首標註發言者並附時間戳的逐字稿，可下載為 TXT、SRT 或 VTT，另附可針對逐字稿提問的對話框。團隊實際建置的是一套離線、單機運作的網頁應用 —— 而非即時字幕、翻譯或雲端服務。
+
+```mermaid
+flowchart LR
+    A["輸入<br/>粵語會議錄音<br/>wav / mp3 / m4a / opus"] --> B["上傳並確認<br/>按下「開始轉寫」"]
+    B --> C["正規化<br/>ffmpeg 轉 16 kHz 單聲道 WAV"]
+    C --> D["轉錄<br/>本機 GPU 執行 faster-whisper（yue）"]
+    D --> E["說話人分離（可關閉）<br/>pyannote 標註 說話人N："]
+    E --> F["校對（可關閉）<br/>Ollama 執行 Qwen3，分塊處理"]
+    F --> G["結果<br/>TXT / SRT / VTT<br/>原文 ＋ 校對版"]
+    G --> H["會議記錄助手<br/>問答／會議記錄（SSE）"]
+```
+
+### 請求 → 方法 → 結果
+
+| 請求 | 方法 | 結果 |
+| --- | --- | --- |
+| 上傳後按下「開始轉寫」 | `POST /api/transcribe`，未經確認不會執行 | 工作編號 ＋ 進度 |
+| 任意容器格式的音訊 | ffmpeg → 16 kHz 單聲道 WAV | 可供後續處理的音訊 |
+| 正規化後的音訊 | 本機 GPU 執行 faster-whisper（`medium` / `large-v3`） | 附時間戳的粵語分段 |
+| 分段 ＋ 音訊（可關閉） | pyannote 說話人分離 | `說話人N：` 標註 |
+| 逐字稿（可關閉） | Ollama 執行 Qwen3，分塊處理 | 校正後文字 —— 絕不摘要 |
+| 已完成的工作 | `GET /api/download/<job_id>/<fmt>` | TXT / SRT / VTT |
+| 針對逐字稿的提問（可關閉） | Ollama，SSE 串流 | 答案或會議記錄 |
+
+**團隊實際建置的內容：** 一套小型、離線的網頁應用，於單一機器上將一段粵語會議錄音轉為附發言者標註、可下載的逐字稿。並非即時字幕、並非翻譯、並非雲端服務。
 
 ## 環境需求
 
